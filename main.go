@@ -5,21 +5,53 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"sort"
+	"strconv"
+	"strings"
 )
 
-// "path/filepath"
-// "strings"
 func dirTree(out io.Writer, path string, printFiles bool) error {
+	pathPieces := strings.Split(path, string(os.PathSeparator))
+	var spaces string
+
+	for ind := 1; ind < len(pathPieces); ind++ {
+		if ind%2 == 0 {
+			spaces += "│   "
+		} else {
+			spaces += "    "
+		}
+	}
+
 	files, err := ioutil.ReadDir(path)
 	if err != nil {
 		panic(err)
 	}
-	for _, file := range files {
-
-		if file.IsDir() {
-			fmt.Printf("└─── %s\n", file.Name())
+	sort.Slice(files, func(i, j int) bool {
+		return files[i].Name() < files[j].Name()
+	})
+	for ind, file := range files {
+		if file.Name() == ".git" {
+			continue
+		}
+		var separator string
+		if ind == len(files)-1 {
+			separator = "└───"
 		} else {
-			fmt.Println(file.Name())
+			separator = "├───"
+		}
+
+		var fileSize string
+		if file.Size() != 0 {
+			fileSize = "(" + strconv.Itoa(int(file.Size())) + "b" + ")"
+		} else {
+			fileSize = "(empty)"
+		}
+		if !file.IsDir() && printFiles {
+			fmt.Printf("%s%s%s %s\n", spaces, separator, file.Name(), fileSize)
+		} else if file.IsDir() {
+
+			fmt.Printf("%s%s%s\n", spaces, separator, file.Name())
+			dirTree(out, path+"/"+file.Name(), printFiles)
 		}
 	}
 
